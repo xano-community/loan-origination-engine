@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loan Origination Engine — Demo</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --muted:#94a3b8;
+          --accent:#38bdf8; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:20px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:4px; }
+  main { max-width:920px; margin:0 auto; padding:24px; display:grid; gap:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .card h2 { margin:0 0 4px; font-size:16px; }
+  .card p.hint { color:var(--muted); font-size:13px; margin:0 0 16px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; padding:9px 11px; background:#0b1220; border:1px solid var(--line);
+                  border-radius:8px; color:var(--text); font-size:14px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  button { margin-top:16px; padding:10px 16px; background:var(--accent); color:#03121c; border:0;
+           border-radius:8px; font-weight:600; font-size:14px; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  .presets button { margin:6px 6px 0 0; padding:7px 12px; font-size:13px; }
+  .out { margin-top:16px; font-family:ui-monospace,monospace; font-size:13px; white-space:pre-wrap;
+         background:#0b1220; border:1px solid var(--line); border-radius:8px; padding:14px; min-height:22px; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-weight:700; font-size:13px; }
+  .approved { background:rgba(52,211,153,.15); color:var(--ok); }
+  .conditionally_approved { background:rgba(56,189,248,.15); color:var(--accent); }
+  .referred { background:rgba(251,191,36,.15); color:var(--warn); }
+  .denied { background:rgba(248,113,113,.15); color:var(--bad); }
+  code { background:#0b1220; padding:1px 6px; border-radius:5px; }
+  .muted { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏦 Loan Origination Decision Engine</h1>
+  <div class="sub">A self-contained Xano template — runs the full submit → decision → status flow on seed data, no credentials.</div>
+</header>
+
+<main>
+  <div class="card">
+    <h2>1 · Connect &amp; seed</h2>
+    <p class="hint">Point this at your Xano instance, then load the demo risk tiers + users.</p>
+    <label>Instance base URL</label>
+    <input id="base" placeholder="https://YOUR-INSTANCE.n7d.xano.io" />
+    <div class="row">
+      <div><label>Loan API group canonical</label><input id="loanGroup" value="loan-origination" /></div>
+      <div><label>Auth API group canonical</label><input id="authGroup" placeholder="e.g. BpEcuAp5 or Authentication" /></div>
+    </div>
+    <button onclick="seed()">Seed demo data</button>
+    <div class="out" id="seedOut"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Try the decision engine</h2>
+    <p class="hint">No login required — this calls <code>POST /demo/run</code>, which scores the applicant and runs the tier waterfall.</p>
+    <div class="presets">
+      <button class="ghost" onclick="preset(150000,800,25000)">Prime</button>
+      <button class="ghost" onclick="preset(60000,900,15000)">Subprime</button>
+      <button class="ghost" onclick="preset(30000,1400,20000)">High-DTI</button>
+    </div>
+    <div class="row3">
+      <div><label>Annual income</label><input id="income" type="number" value="150000" /></div>
+      <div><label>Monthly debt</label><input id="debt" type="number" value="800" /></div>
+      <div><label>Loan amount</label><input id="amount" type="number" value="25000" /></div>
+    </div>
+    <div class="row">
+      <div><label>Credit score override (optional)</label><input id="score" type="number" placeholder="derived if blank" /></div>
+      <div><label>KYC override (optional)</label>
+        <select id="kyc"><option value="">derived (passed)</option><option>passed</option>
+        <option>review_required</option><option>failed</option></select></div>
+    </div>
+    <button onclick="runScenario()">Run decision</button>
+    <div class="out" id="decisionOut"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Full authenticated flow</h2>
+    <p class="hint">Log in as the seeded broker, create an application, submit it, and read its status.
+      Demo login: <code>broker@demo.test</code> / <code>Demo1234</code>.</p>
+    <div class="row3">
+      <div><label>Applicant income</label><input id="aincome" type="number" value="95000" /></div>
+      <div><label>Monthly debt</label><input id="adebt" type="number" value="1200" /></div>
+      <div><label>Loan amount</label><input id="aamount" type="number" value="18000" /></div>
+    </div>
+    <button onclick="fullFlow()">Login → create → submit → status</button>
+    <div class="out" id="flowOut"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const base = () => $('base').value.replace(/\/+$/,'');
+const loanUrl = p => `${base()}/api:${$('loanGroup').value}${p}`;
+const authUrl = p => `${base()}/api:${$('authGroup').value}${p}`;
+
+async function post(url, body, token) {
+  const headers = { 'Content-Type':'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(url, { method:'POST', headers, body: JSON.stringify(body||{}) });
+  return { status:r.status, data: await r.json().catch(()=>({})) };
+}
+async function get(url, token) {
+  const r = await fetch(url, { headers: token ? {Authorization:'Bearer '+token} : {} });
+  return { status:r.status, data: await r.json().catch(()=>({})) };
+}
+function guard() {
+  if (!base()) { alert('Enter your instance base URL first.'); return false; }
+  return true;
+}
+function decisionCard(d) {
+  const o = d.outcome || '—';
+  return `<span class="badge ${o}">${o.replace(/_/g,' ').toUpperCase()}</span>\n` +
+    `type: ${d.decision_type}\ntier id: ${d.risk_tier_id}\napproved rate: ${d.approved_rate}\n` +
+    `denial reasons: ${JSON.stringify(d.denial_reasons)}\nfactors: ${JSON.stringify(d.decision_factors)}`;
+}
+
+async function seed() {
+  if (!guard()) return;
+  $('seedOut').textContent = 'Seeding…';
+  const { status, data } = await post(loanUrl('/seed'));
+  $('seedOut').textContent = status===200
+    ? `✓ tiers created: ${data.tiers_created}, users created: ${data.users_created}\n` +
+      `demo logins:\n  ${Object.values(data.demo_credentials||{}).join('\n  ')}`
+    : `Error ${status}: ${JSON.stringify(data)}`;
+}
+function preset(i,d,a){ $('income').value=i; $('debt').value=d; $('amount').value=a; }
+
+async function runScenario() {
+  if (!guard()) return;
+  $('decisionOut').textContent = 'Running…';
+  const body = { annual_income:+$('income').value, monthly_debt:+$('debt').value, loan_amount:+$('amount').value };
+  if ($('score').value) body.credit_score = +$('score').value;
+  if ($('kyc').value) body.kyc_status = $('kyc').value;
+  const { status, data } = await post(loanUrl('/demo/run'), body);
+  $('decisionOut').innerHTML = status===200 ? decisionCard(data) : `Error ${status}: ${JSON.stringify(data)}`;
+}
+
+async function fullFlow() {
+  if (!guard()) return;
+  const out = $('flowOut'); out.textContent = 'Logging in…';
+  const login = await post(authUrl('/auth/login'), { email:'broker@demo.test', password:'Demo1234' });
+  if (login.status!==200 || !login.data.authToken) { out.textContent = `Login failed (${login.status}). Did you seed + set the auth group canonical?`; return; }
+  const token = login.data.authToken;
+  out.textContent = 'Creating application…';
+  const create = await post(loanUrl('/applications'), {
+    first_name:'Ada', last_name:'Applicant', email:'ada.'+Date.now()+'@demo.test',
+    loan_type:'auto', loan_amount:+$('aamount').value, loan_term_months:48,
+    annual_income:+$('aincome').value, monthly_debt:+$('adebt').value
+  }, token);
+  if (!create.data.id) { out.textContent = `Create failed: ${JSON.stringify(create.data)}`; return; }
+  const id = create.data.id;
+  out.textContent = 'Submitting…';
+  const sub = await post(loanUrl(`/applications/${id}/submit`), {}, token);
+  const st = await get(loanUrl(`/applications/${id}/status`), token);
+  out.innerHTML = `application #${id}\n` + decisionCard(sub.data.decision || {}) +
+    `\n\nstatus: ${st.data.application?.status} · credit score: ${st.data.application?.credit_score} · dti: ${st.data.application?.dti_ratio}` +
+    `\napplicant (PII masked): ${JSON.stringify(st.data.applicant)}`;
+}
+</script>
+</body>
+</html>
