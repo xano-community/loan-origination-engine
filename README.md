@@ -6,6 +6,12 @@ It is **self-contained** — the whole `submit → decision → status` flow run
 
 ---
 
+## Why this exists
+
+Consumer lending has two hard parts a demo usually skips: making a *consistent* credit decision, and being able to *defend* it afterward. Hand-coded approval logic drifts between loan officers, and when a regulator asks why an applicant was denied, "the system said no" isn't an answer — ECOA requires a specific adverse-action reason on the record.
+
+This template is a working decision engine that does both. A deterministic score feeds a configurable risk-tier waterfall to produce an approve / conditionally-approve / refer / deny outcome, every state change is written to an audit log, and every denial carries an ECOA adverse-action id and timestamp. It runs end-to-end on the seed data this repo ships with no credentials, so you can trace the whole decision path before wiring in a real credit bureau — bureau, KYC, and cash-flow providers are optional enrichment, not prerequisites.
+
 ## What you get
 
 | Layer | Contents |
