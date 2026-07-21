@@ -113,15 +113,6 @@ The four decision outcomes were also verified against a live deployment through 
 
 ---
 
-## Repo layout
-
-```
-backend/      XanoScript workspace (tables, functions, APIs, middleware, task, tests)
-frontend/     Single-file PoC UI (index.html) that drives the live API
-multidoc/     Single-stream XanoScript bundle of the whole backend
-README.md
-```
-
 ## Notes & limitations
 
 - This is a **proof-of-concept template**. The credit score is a heuristic; SSNs are stored as provided (encrypt at rest before any production use); the three `role_guard` / `audit_trail` / `pii_redaction` middlewares are shipped as reusable helpers but are not auto-attached.
