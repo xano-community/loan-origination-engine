@@ -41,7 +41,7 @@ The engine returns one of four outcomes, driven entirely by the seeded `risk_tie
    ```
 2. **Seed** the demo risk tiers + users (idempotent):
    ```bash
-   curl -X POST "https://<your-instance>.xano.io/api:loan-origination/seed"
+   curl -X POST "https://<your-instance>.xano.io/api:<your-loan-group-canonical>/seed"
    ```
    This creates three tiers (Prime / Near-Prime / Subprime) and three demo users.
 3. **Open the frontend** — `frontend/index.html` in a browser. Enter your instance base URL + the two API-group canonicals, click **Seed demo data**, then try the decision engine.
@@ -52,7 +52,7 @@ Demo logins (password `Demo1234`): `broker@demo.test`, `underwriter@demo.test`, 
 
 ```bash
 BASE=https://<your-instance>.xano.io
-LOAN=$BASE/api:loan-origination
+LOAN=$BASE/api:<your-loan-group-canonical>
 AUTH=$BASE/api:<your-auth-group-canonical>
 
 # log in as the seeded broker
@@ -91,6 +91,8 @@ Because tiers live in the `risk_tier` table (not in code), you tune thresholds, 
 ## Going live (optional real integrations)
 
 The credential-free scorer is the **default**. To use real providers, set the relevant workspace env vars and feed results in through the webhook endpoints (which overwrite the derived score/KYC before decisioning):
+
+> **Set `APP_BASE_URL` to your Loan API group's full base URL** — `https://<your-instance>.xano.io/api:<your-loan-group-canonical>`. Xano assigns that `api:<canonical>` slug uniquely when you push, so copy it from the API group page in Xano. The provider callbacks (`call_kyc`, `call_credit_bureau`) append `/webhooks/kyc` and `/webhooks/bureau` to it, so a wrong or missing value means the provider can't reach your webhook.
 
 | Provider | Function | Env vars | Entry point |
 |---|---|---|---|

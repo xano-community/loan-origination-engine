@@ -48,7 +48,7 @@ function "external/call_kyc" {
             address_state: $applicant.address|get:"state",
             address_postal_code: $applicant.address|get:"zip",
             external_entity_id: $input.application_id|to_text,
-            webhook_url: $env.APP_BASE_URL ~ "/api:loan-origination/webhooks/kyc"
+            webhook_url: $env.APP_BASE_URL ~ "/webhooks/kyc"
           }
           headers = [
             "Content-Type: application/json",

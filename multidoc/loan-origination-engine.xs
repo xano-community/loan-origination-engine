@@ -1057,7 +1057,7 @@ function "external/call_credit_bureau" {
             date_of_birth: $applicant.date_of_birth,
             address: $applicant.address,
             reference_id: $input.application_id|to_text,
-            webhook_url: $env.APP_BASE_URL ~ "/api:loan-origination/webhooks/bureau"
+            webhook_url: $env.APP_BASE_URL ~ "/webhooks/bureau"
           }
           headers = [
             "Content-Type: application/json",
@@ -1162,7 +1162,7 @@ function "external/call_kyc" {
             address_state: $applicant.address|get:"state",
             address_postal_code: $applicant.address|get:"zip",
             external_entity_id: $input.application_id|to_text,
-            webhook_url: $env.APP_BASE_URL ~ "/api:loan-origination/webhooks/kyc"
+            webhook_url: $env.APP_BASE_URL ~ "/webhooks/kyc"
           }
           headers = [
             "Content-Type: application/json",
@@ -1685,12 +1685,10 @@ query "auth/signup" verb=POST {
 }
 ---
 api_group Authentication {
-  canonical = "BpEcuAp5"
   guid = "6PUOHA4eyrp1JSh5rpaVax7vjKE"
 }
 ---
 api_group LoanOrigination {
-  canonical = "loan-origination"
   description = "Loan Origination API - Applications, Submissions, Status, and Webhooks"
   tags = ["loans", "origination", "compliance"]
   guid = "b5NrahUM79mHdL_YcS954FV49r8"
